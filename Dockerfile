@@ -16,5 +16,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Sao chép toàn bộ mã nguồn vào thư mục làm việc
 COPY . .
 
-# Chạy lệnh để khởi động ứng dụng (thay đổi lệnh này cho phù hợp với ứng dụng của bạn)
+# Chạy lệnh để khởi động
 CMD ["sh"]
