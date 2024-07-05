@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Chạy lệnh để khởi động ứng dụng (thay đổi lệnh này cho phù hợp với ứng dụng của bạn)
-CMD ["python", "app.py"]
+CMD ["sh"]
