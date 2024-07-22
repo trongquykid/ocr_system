@@ -1,6 +1,7 @@
 import PIL
 
 from surya.input.processing import open_pdf, get_page_images
+from process_image_input import process_image_v2
 import os
 import filetype
 from PIL import Image
@@ -31,24 +32,29 @@ def load_pdf(pdf_path, max_pages=None, start_page=None):
     return images, names
 
 
-def load_image(image_path):
+def load_image(image_path, type = "pdf"):
     image = Image.open(image_path).convert("RGB")
     name = get_name_from_path(image_path)
-    return [image], [name]
+    type = type.lower()
+    if type == 'pdf':
+        return [image], [name]
+    else:
+        processed_image = process_image_v2(image)
+        pil_image = Image.fromarray(processed_image)
+        return [pil_image], [name]
 
-
-def load_from_file(input_path, max_pages=None, start_page=None):
+def load_from_file(input_path, max_pages=None, start_page=None, type="pdf"):
     input_type = filetype.guess(input_path)
+    type = type.lower()
     if input_type.extension == "pdf":
         return load_pdf(input_path, max_pages, start_page)
     else:
-        return load_image(input_path)
+        return load_image(input_path, type)
 
-
-def load_from_folder(folder_path, max_pages=None, start_page=None):
+def load_from_folder(folder_path, max_pages=None, start_page=None, type="pdf"):
     image_paths = [os.path.join(folder_path, image_name) for image_name in os.listdir(folder_path) if not image_name.startswith(".")]
     image_paths = [ip for ip in image_paths if not os.path.isdir(ip)]
-
+    type = type.lower()
     images = []
     names = []
     for path in image_paths:
@@ -59,7 +65,7 @@ def load_from_folder(folder_path, max_pages=None, start_page=None):
             names.extend(name)
         else:
             try:
-                image, name = load_image(path)
+                image, name = load_image(path, type)
                 images.extend(image)
                 names.extend(name)
             except PIL.UnidentifiedImageError:
