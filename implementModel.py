@@ -17,9 +17,17 @@ from surya.postprocessing.heatmap import draw_polys_on_image
 from surya.settings import settings
 
 from VietnameseOcrCorrection.inferenceModel import check_correct_ocr, count_words, check_correct_paragraph
+from get_information import get_content, save_json
 import os
 
-INPUT_PATH = 'image_test/Passport/Singaport_10852-1623140027969.png'
+# INPUT_PATH: the input path of the image
+INPUT_PATH = 'image_test/Passport/Specimen_Personal_Information_Page_South_Korean_Passport.jpg'
+
+# TYPE: types of images to be processed. Ex: passport, cccd, pdf, ...
+TYPE = "passport"
+
+# LANG: Specified language used. Ex: English: en, Vietnamese: vi
+LANG = 'en'
 
 # Increase tọa độ
 def adjust_y_coordinates(polygon, decrease_percentage, increase_percentage):
@@ -38,26 +46,28 @@ def adjust_y_coordinates(polygon, decrease_percentage, increase_percentage):
     
     return adjusted_polygon
 
-def save_json(result_path, det_predictions, names, images):
+def save_results(result_path, file_json, predictions, names, images):
 
-    predictions_by_page = defaultdict(list)
-    for pred, name, image in zip(det_predictions, names, images):
+    predictions_note = defaultdict(list)
+    
+    for pred, name, image in zip(predictions, names, images):
         out_pred = pred.model_dump(exclude=["heatmap", "affinity_map"])
-        out_pred["page"] = len(predictions_by_page[name]) + 1
-        predictions_by_page[name].append(out_pred)
+        out_pred["page"] = len(predictions_note[name]) + 1
+        predictions_note[name].append(out_pred)
 
     # Save results to JSON file
-    with open(os.path.join(result_path, "results.json"), "w+", encoding="utf-8") as f:
-        json.dump(predictions_by_page, f, ensure_ascii=False)
+    save_json(os.path.join(result_path, file_json), predictions_note)
+    return predictions_note
 
+# Text Detection
 def detect_bboxes(input_path, results_dir=os.path.join(settings.RESULT_DIR, "surya"), 
-                  save_images=True, max_pages=None, start_page=0):
+                  save_images=True, max_pages=None, start_page=0, type = 'pdf'):
 
     if os.path.isdir(input_path):
         images, names = load_from_folder(input_path, max_pages, start_page)
         folder_name = os.path.basename(input_path)
     else:
-        images, names = load_from_file(input_path, max_pages, start_page)
+        images, names = load_from_file(input_path, max_pages, start_page, type)
         folder_name = os.path.basename(input_path).split(".")[0]
 
     result_path = os.path.join(results_dir, folder_name)
@@ -81,15 +91,17 @@ def detect_bboxes(input_path, results_dir=os.path.join(settings.RESULT_DIR, "sur
             column_image = draw_lines_on_image(pred.vertical_lines, copy.deepcopy(image))
             column_image.save(os.path.join(result_path, f"{name}_{idx}_column.png"))
 
-    save_json(result_path, det_predictions, names, images)
+    save_results(result_path, "results.json", det_predictions, names, images)
 
     return images, names, result_path, det_predictions
 
+# Text Recognition
 def recognize_text(images, names, result_path, det_predictions, 
-                   save_images=True,  lang_file=None, langs=None):
+                   save_images=True,  lang_file=None, langs=None, type = 'pdf'):
     
     assert langs or lang_file, "Must provide either --langs or --lang_file"
-
+    type = type.lower()
+    
     if lang_file:
         langs = load_lang_file(lang_file, names)
         for lang in langs:
@@ -112,12 +124,18 @@ def recognize_text(images, names, result_path, det_predictions,
             bboxes = [l.bbox for l in pred.text_lines]
             pred_text = [l.text for l in pred.text_lines]
             pred_confidence = [l.confidence for l in pred.text_lines]
-
-            # pred_text = check_correct_ocr(pred_text) # Check correct Vietnameses
+            pred_text = check_correct_ocr(pred_text) # Check correct Vietnameses
 
             page_image = draw_text_on_image_v2(bboxes, pred_text, pred_confidence, image.size, langs, has_math="_math" in langs)
             page_image.save(os.path.join(result_path, f"{name}_{idx}_text.png"))
-    save_json(result_path, predictions_by_image, names, images)
+    predictions_note = save_results(result_path, "results.json", predictions_by_image, names, images)
 
-images, names, result_path, det_predictions= detect_bboxes(INPUT_PATH)
-recognize_text(images, names, result_path, det_predictions, langs='en')
+    if type == 'passport':
+        info_passport = defaultdict(list)
+        info_passport = get_content(predictions_note, names[0], "Passport No", info_passport)
+        info_passport = get_content(predictions_note, names[0], "Date of issue", info_passport)
+        save_json(os.path.join(result_path, "info_passport.json"), info_passport)
+
+if __name__ == "__main__":
+    images, names, result_path, det_predictions= detect_bboxes(INPUT_PATH, type=TYPE)
+    recognize_text(images, names, result_path, det_predictions, langs=LANG)
