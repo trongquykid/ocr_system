@@ -193,16 +193,22 @@ def draw_bboxes_on_image(bboxes, image, labels=None):
     return image
 
 
-def draw_polys_on_image(corners, image, labels=None, box_padding=-1, label_offset=1, label_font_size=10):
+def draw_polys_on_image(corners, image, confidences=None ,labels=None, box_padding=-1, label_offset=1, label_font_size=10):
     draw = ImageDraw.Draw(image)
     font_path = get_font_path()
     label_font = ImageFont.truetype(font_path, label_font_size)
 
-    for i in range(len(corners)):
-        poly = corners[i]
-        poly = [(int(p[0]), int(p[1])) for p in poly]
-        draw.polygon(poly, outline='red', width=1)
+    for corner, confidence in zip(corners, confidences):
+        poly = [(int(p[0]), int(p[1])) for p in corner]
+        conf_det = round(confidence,2)
 
+        if conf_det > 0.95:
+            draw.polygon(poly,outline='red', width=1)
+        elif 0.9 < conf_det <= 0.95:
+            draw.polygon(poly,outline='blue', width=1)
+        else:
+            draw.polygon(poly,outline='green', width=1)
+        
         if labels is not None:
             label = labels[i]
             text_position = (
