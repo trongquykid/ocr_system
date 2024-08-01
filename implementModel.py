@@ -84,8 +84,8 @@ def detect_bboxes(input_path, results_dir=os.path.join(settings.RESULT_DIR, "sur
 
             polygons = [adjust_y_coordinates(polygon, 0.1, 0.2) for polygon in polygons] 
             
-            confidence = [round(p.confidence,2) for p in pred.bboxes]
-            bbox_image = draw_polys_on_image(polygons, copy.deepcopy(image))
+            confidences = [round(p.confidence,2) for p in pred.bboxes]
+            bbox_image = draw_polys_on_image(polygons, copy.deepcopy(image), confidences)
             bbox_image.save(os.path.join(result_path, f"{name}_{idx}_bbox.png"))
 
             column_image = draw_lines_on_image(pred.vertical_lines, copy.deepcopy(image))
