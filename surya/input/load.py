@@ -1,11 +1,11 @@
 import PIL
 
-from surya.input.processing import open_pdf, get_page_images
+from surya.input.processing import open_pdf, get_page_images, save_image
 from process_image_input import process_image_v2
 import os
 import filetype
 from PIL import Image
-import json
+import json 
 
 
 def get_name_from_path(path):
@@ -47,7 +47,13 @@ def load_from_file(input_path, max_pages=None, start_page=None, type="pdf"):
     input_type = filetype.guess(input_path)
     type = type.lower()
     if input_type.extension == "pdf":
-        return load_pdf(input_path, max_pages, start_page)
+        
+        images, names = load_pdf(input_path, max_pages, start_page)
+        output_path = os.path.join('./image_pdf', names[0])
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        save_image(images, output_path)
+        return images, names
     else:
         return load_image(input_path, type)
 

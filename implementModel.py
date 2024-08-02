@@ -9,7 +9,7 @@ from surya.model.detection.segformer import load_model as load_detection_model, 
 from surya.model.recognition.model import load_model as load_recognition_model
 from surya.model.recognition.processor import load_processor as load_recognition_processor
 from surya.model.recognition.tokenizer import _tokenize
-from surya.ocr import run_ocr_v2
+from surya.ocr import run_ocr_v2, adjust_y_coordinates
 from surya.detection import batch_text_detection
 from surya.postprocessing.text import draw_text_on_image, draw_text_on_image_v2
 from surya.postprocessing.affinity import draw_lines_on_image
@@ -17,47 +17,17 @@ from surya.postprocessing.heatmap import draw_polys_on_image
 from surya.settings import settings
 
 from VietnameseOcrCorrection.inferenceModel import check_correct_ocr, count_words, check_correct_paragraph
-from get_information import get_content, save_json
+from get_information import get_content, save_json, save_results
 import os
 
 # INPUT_PATH: the input path of the image
-INPUT_PATH = 'image_test/Passport/Specimen_Personal_Information_Page_South_Korean_Passport.jpg'
+INPUT_PATH = 'image_test/file_pdf/08-2022-TT-BCA.pdf'
 
 # TYPE: types of images to be processed. Ex: passport, cccd, pdf, ...
-TYPE = "passport"
+TYPE = "pdf"
 
 # LANG: Specified language used. Ex: English: en, Vietnamese: vi
-LANG = 'en'
-
-# Increase tọa độ
-def adjust_y_coordinates(polygon, decrease_percentage, increase_percentage):
-    min_y = min(polygon, key=lambda point: point[1])[1]
-    max_y = max(polygon, key=lambda point: point[1])[1]
-
-    adjusted_polygon = []
-    for x, y in polygon:
-        if y == min_y:
-            adjusted_y = int(y * (1 - decrease_percentage / 100))
-        elif y == max_y:
-            adjusted_y = int(y * (1 + increase_percentage / 100))
-        else:
-            adjusted_y = y
-        adjusted_polygon.append([x, adjusted_y])
-    
-    return adjusted_polygon
-
-def save_results(result_path, file_json, predictions, names, images):
-
-    predictions_note = defaultdict(list)
-    
-    for pred, name, image in zip(predictions, names, images):
-        out_pred = pred.model_dump(exclude=["heatmap", "affinity_map"])
-        out_pred["page"] = len(predictions_note[name]) + 1
-        predictions_note[name].append(out_pred)
-
-    # Save results to JSON file
-    save_json(os.path.join(result_path, file_json), predictions_note)
-    return predictions_note
+LANG = 'vi'
 
 # Text Detection
 def detect_bboxes(input_path, results_dir=os.path.join(settings.RESULT_DIR, "surya"), 
@@ -82,16 +52,16 @@ def detect_bboxes(input_path, results_dir=os.path.join(settings.RESULT_DIR, "sur
         for idx, (image, pred, name) in enumerate(zip(images, det_predictions, names)):
             polygons = [p.polygon for p in pred.bboxes]
 
-            polygons = [adjust_y_coordinates(polygon, 0.1, 0.2) for polygon in polygons] 
-            
-            confidences = [round(p.confidence,2) for p in pred.bboxes]
+            polygons = [adjust_y_coordinates(polygon, 0, 0) for polygon in polygons] 
+            confidences = [c.confidence for c in pred.bboxes]
+
             bbox_image = draw_polys_on_image(polygons, copy.deepcopy(image), confidences)
             bbox_image.save(os.path.join(result_path, f"{name}_{idx}_bbox.png"))
 
             column_image = draw_lines_on_image(pred.vertical_lines, copy.deepcopy(image))
             column_image.save(os.path.join(result_path, f"{name}_{idx}_column.png"))
 
-    save_results(result_path, "results.json", det_predictions, names, images)
+    save_results(result_path, "results_det.json", det_predictions, names, images)
 
     return images, names, result_path, det_predictions
 
@@ -124,11 +94,11 @@ def recognize_text(images, names, result_path, det_predictions,
             bboxes = [l.bbox for l in pred.text_lines]
             pred_text = [l.text for l in pred.text_lines]
             pred_confidence = [l.confidence for l in pred.text_lines]
-            pred_text = check_correct_ocr(pred_text) # Check correct Vietnameses
+            # pred_text = check_correct_ocr(pred_text) # Check correct Vietnameses
 
             page_image = draw_text_on_image_v2(bboxes, pred_text, pred_confidence, image.size, langs, has_math="_math" in langs)
             page_image.save(os.path.join(result_path, f"{name}_{idx}_text.png"))
-    predictions_note = save_results(result_path, "results.json", predictions_by_image, names, images)
+    predictions_note = save_results(result_path, "results_reg.json", predictions_by_image, names, images)
 
     if type == 'passport':
         info_passport = defaultdict(list)

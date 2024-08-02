@@ -1,4 +1,6 @@
 import json
+import os
+from collections import defaultdict
 
 def open_json(input_path):
     with open(input_path, 'r', encoding="utf-8") as file:
@@ -44,3 +46,16 @@ def get_content(datas, name, title, result):
     
     result[title] = no_number
     return result
+
+def save_results(result_path, file_json, predictions, names, images):
+
+    predictions_note = defaultdict(list)
+    
+    for pred, name, image in zip(predictions, names, images):
+        out_pred = pred.model_dump(exclude=["heatmap", "affinity_map"])
+        out_pred["page"] = len(predictions_note[name]) + 1
+        predictions_note[name].append(out_pred)
+
+    # Save results to JSON file
+    save_json(os.path.join(result_path, file_json), predictions_note)
+    return predictions_note

@@ -79,6 +79,10 @@ def get_page_images(doc, indices: List, dpi=settings.IMAGE_DPI):
     images = [image.convert("RGB") for image in images]
     return images
 
+def save_image(images, output_dir):
+    for i, image in enumerate(images):
+        output_path = f"{output_dir}/page_{i}.jpg"
+        image.save(output_path, 'JPEG')
 
 def slice_bboxes_from_image(image: Image.Image, bboxes):
     lines = []
