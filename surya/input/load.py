@@ -5,8 +5,10 @@ from process_image_input import process_image_v2
 import os
 import filetype
 from PIL import Image
-import json 
+import json
+import numpy as np
 
+from alyn.deskew import Deskew
 
 def get_name_from_path(path):
     return os.path.basename(path).split(".")[0]
@@ -33,7 +35,10 @@ def load_pdf(pdf_path, max_pages=None, start_page=None):
 
 
 def load_image(image_path, type = "pdf"):
-    image = Image.open(image_path).convert("RGB")
+    image = Image.open(image_path).convert('L')
+    image = np.array(image)
+    deskew_obj = Deskew(image, display_image=False, output_file=False, r_angle=0)
+    image = deskew_obj.deskew()
     name = get_name_from_path(image_path)
     type = type.lower()
     if type == 'pdf':
