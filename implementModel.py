@@ -1,5 +1,3 @@
-import argparse
-import json
 import copy
 from collections import defaultdict
 
@@ -9,19 +7,18 @@ from surya.model.detection.segformer import load_model as load_detection_model, 
 from surya.model.recognition.model import load_model as load_recognition_model
 from surya.model.recognition.processor import load_processor as load_recognition_processor
 from surya.model.recognition.tokenizer import _tokenize
-from surya.ocr import run_ocr_v2, adjust_y_coordinates
+from surya.ocr import adjust_y_coordinates, evaluate_ocr
 from surya.detection import batch_text_detection
-from surya.postprocessing.text import draw_text_on_image, draw_text_on_image_v2
+from surya.postprocessing.text import draw_text_on_image_v2
 from surya.postprocessing.affinity import draw_lines_on_image
 from surya.postprocessing.heatmap import draw_polys_on_image
 from surya.settings import settings
 
-from VietnameseOcrCorrection.inferenceModel import check_correct_ocr, count_words, check_correct_paragraph
 from get_information import get_content, save_json, save_results
 import os
 
 # INPUT_PATH: the input path of the image
-INPUT_PATH = 'image_test/file_pdf/08-2022-TT-BCA.pdf'
+INPUT_PATH = 'image_test/textbook_text.jpg'
 
 # TYPE: types of images to be processed. Ex: passport, cccd, pdf, ...
 TYPE = "pdf"
@@ -86,7 +83,7 @@ def recognize_text(images, names, result_path, det_predictions,
     rec_model = load_recognition_model(langs=lang_tokens)
     rec_processor = load_recognition_processor()
     
-    predictions_by_image = run_ocr_v2(images, image_langs, det_predictions, rec_model, rec_processor)
+    predictions_by_image = evaluate_ocr(images, image_langs, det_predictions, rec_model, rec_processor)
 
     if save_images:
         for idx, (name, image, pred, langs) in enumerate(zip(names, images, predictions_by_image, image_langs)):
@@ -95,7 +92,8 @@ def recognize_text(images, names, result_path, det_predictions,
             pred_text = [l.text for l in pred.text_lines]
             pred_confidence = [l.confidence for l in pred.text_lines]
             # pred_text = check_correct_ocr(pred_text) # Check correct Vietnameses
-
+            # text = ' '. join(pred_text)
+            # print(text)
             page_image = draw_text_on_image_v2(bboxes, pred_text, pred_confidence, image.size, langs, has_math="_math" in langs)
             page_image.save(os.path.join(result_path, f"{name}_{idx}_text.png"))
     predictions_note = save_results(result_path, "results_reg.json", predictions_by_image, names, images)

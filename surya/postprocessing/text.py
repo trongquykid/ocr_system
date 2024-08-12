@@ -67,7 +67,7 @@ def get_text_size(text, font):
     return width, height
 
 
-def render_text(draw, text, s_bbox, bbox_width, bbox_height, font_path, box_font_size):
+def render_text(draw, text, s_bbox, bbox_width, bbox_height, font_path, box_font_size, color):
     font = ImageFont.truetype(font_path, box_font_size)
     text_width, text_height = get_text_size(text, font)
     while (text_width > bbox_width or text_height > bbox_height) and box_font_size > 6:
@@ -80,8 +80,7 @@ def render_text(draw, text, s_bbox, bbox_width, bbox_height, font_path, box_font
     x = s_bbox[0]
     y = s_bbox[1] + (bbox_height - text_height) / 2
 
-    draw.text((x, y), text, fill="black", font=font)
-
+    draw.text((x, y), text, fill=color, font=font)
 
 def render_math(image, draw, text, s_bbox, bbox_width, bbox_height, font_path):
         try:

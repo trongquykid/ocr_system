@@ -10,6 +10,7 @@ import numpy as np
 
 from alyn.deskew import Deskew
 
+
 def get_name_from_path(path):
     return os.path.basename(path).split(".")[0]
 
@@ -32,7 +33,6 @@ def load_pdf(pdf_path, max_pages=None, start_page=None):
     doc.close()
     names = [get_name_from_path(pdf_path) for _ in page_indices]
     return images, names
-
 
 def load_image(image_path, type = "pdf"):
     image = Image.open(image_path).convert('L')

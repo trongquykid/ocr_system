@@ -29,7 +29,7 @@ def get_total_splits(image_size, processor):
 
 
 def split_image(img, processor):
-    # This will not modify/return the original image - it will either crop, or copy the image
+
     img_height = list(img.size)[1]
     max_height = settings.DETECTOR_IMAGE_CHUNK_HEIGHT
     processor_height = processor.size["height"]
@@ -99,6 +99,15 @@ def slice_polys_from_image(image: Image.Image, polys):
         lines.append(slice_and_pad_poly(image_array, poly))
     return lines
 
+def slice_polys_from_image_v2(image: Image.Image, polys):
+    image_array = np.array(image, dtype=np.uint8)
+    lines = []
+    lines_crop = []
+    for idx, poly in enumerate(polys):
+        rectangle_image, cropped_polygon = slice_and_pad_poly_v2(image_array, poly)
+        lines.append(rectangle_image)
+        lines_crop.append(cropped_polygon)
+    return lines, lines_crop
 
 def slice_and_pad_poly(image_array: np.array, coordinates):
     # Draw polygon onto mask
@@ -118,3 +127,22 @@ def slice_and_pad_poly(image_array: np.array, coordinates):
     rectangle_image = Image.fromarray(cropped_polygon)
 
     return rectangle_image
+
+def slice_and_pad_poly_v2(image_array: np.array, coordinates):
+    # Draw polygon onto mask
+    coordinates = [(corner[0], corner[1]) for corner in coordinates]
+    bbox = [min([x[0] for x in coordinates]), min([x[1] for x in coordinates]), max([x[0] for x in coordinates]), max([x[1] for x in coordinates])]
+
+    # We mask out anything not in the polygon
+    cropped_polygon = image_array[bbox[1]:bbox[3], bbox[0]:bbox[2]].copy()
+    coordinates = [(x - bbox[0], y - bbox[1]) for x, y in coordinates]
+
+    # Pad the area outside the polygon with the pad value
+    mask = np.zeros(cropped_polygon.shape[:2], dtype=np.uint8)
+    cv2.fillPoly(mask, [np.int32(coordinates)], 1)
+    mask = np.stack([mask] * 3, axis=-1)
+
+    cropped_polygon[mask == 0] = settings.RECOGNITION_PAD_VALUE
+    rectangle_image = Image.fromarray(cropped_polygon)
+
+    return rectangle_image, cropped_polygon
